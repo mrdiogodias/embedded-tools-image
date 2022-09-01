@@ -1,0 +1,40 @@
+#------------------------
+#----Embedded Compilers--
+#------------------------
+RUN ls /
+
+RUN apt-get update	
+
+#Installation requirements
+RUN apt install -y git curl unzip wget xz-utils
+
+#------------------------
+#------BUILD utilities---
+#------------------------
+RUN apt-get install -y make
+ENV CMAKE_VERSION 3.24.0
+#download and install cmake from latest releases
+RUN cd /tmp/ && \
+	wget -nv https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-linux-x86_64.tar.gz && \
+    tar -xf cmake-$CMAKE_VERSION-linux-x86_64.tar.gz && \
+	rm -rf cmake-$CMAKE_VERSION-linux-x86_64.tar.gz && \
+	mv cmake-$CMAKE_VERSION-linux-x86_64 /opt/ && \
+	chmod -R +x /opt/cmake-$CMAKE_VERSION-linux-x86_64 && \
+    ln -s /opt/cmake-$CMAKE_VERSION-linux-x86_64/bin/* /usr/bin/
+	
+#Ninja
+ENV NINJA_VERSION 1.11.0
+RUN cd /tmp/ && wget -nv -O ninja.zip https://github.com/ninja-build/ninja/releases/download/v$NINJA_VERSION/ninja-linux.zip && \
+    unzip ninja.zip && rm -rf ninja.zip
+RUN chmod +x /tmp/ninja
+RUN mv /tmp/ninja /opt
+RUN ln -s /opt/ninja /usr/bin/ninja
+
+#------------------------
+#------Compilers/TOOLCHAINS---
+#------------------------
+#ARM toolchain
+RUN apt-get -y install gcc-arm-none-eabi gcc g++
+
+WORKDIR "/home"
+

@@ -1,0 +1,112 @@
+#------------------------
+#-----Static Analysis---
+#------------------------
+RUN apt-get update
+#Installation requirements
+RUN apt-get install -y \ 
+                    python3 \ 
+                    python3-pip \ 
+                    wget \
+                    unzip \ 
+                    curl \ 
+                    git
+                    
+#Code quality tools
+RUN pip3 install lizard cppclean flawfinder 
+
+#style check tool
+RUN apt-get install kwstyle -y
+RUN pip3 install Jinja2
+
+#METRIX PLUS PLUS
+ENV METRIX_VERSION 1.7.1
+RUN wget -nv https://github.com/metrixplusplus/metrixplusplus/archive/refs/tags/$METRIX_VERSION.zip -O /tmp/metrix.zip
+RUN unzip /tmp/metrix.zip -d /opt/ && rm /tmp/metrix.zip
+ENV METRIXPP_DIR /opt/metrixplusplus-$METRIX_VERSION
+
+
+#Install PMD https://pmd.github.io/latest/index.html
+ENV PMD_VERSION=6.48.0
+ENV PMD_BIN=/opt/pmd-bin-$PMD_VERSION/bin
+RUN apt-get install default-jdk -y #java
+RUN  cd /tmp/ &&  wget -nv https://github.com/pmd/pmd/releases/download/pmd_releases%2F$PMD_VERSION/pmd-bin-$PMD_VERSION.zip -O pmd.zip && \
+    unzip pmd.zip && \
+    rm -f pmd.zip && \
+    mv pmd-bin-$PMD_VERSION /opt/ 
+#Get xslt for duplicates and modify it so it can accept less than 30 lines
+RUN apt-get install xsltproc -y #processor for xslt
+RUN cd $PMD_BIN && \
+    wget -nv https://raw.githubusercontent.com/pmd/pmd/1290999ec2b4d0ce58d89c2fc57d0188f018d770/pmd-core/etc/xslt/cpdhtml.xslt && \
+    sed -i 's/>30/>1/g' cpdhtml.xslt && \
+    sed -i 's/Only those fragments longer than 30 lines of code are shown.//g' cpdhtml.xslt && \
+    sed -i 's/cols="100"/cols="125"/g' cpdhtml.xslt
+
+
+#Install Quality Code inspection tools
+#cppcheck
+ENV CPPCHECK_VERSION=2.8
+RUN apt install -y libpcre3-dev
+RUN wget -q --no-check-certificate -O /tmp/cppcheck-${CPPCHECK_VERSION}.tar.gz https://github.com/danmar/cppcheck/archive/${CPPCHECK_VERSION}.tar.gz && \
+    tar -zxf /tmp/cppcheck-${CPPCHECK_VERSION}.tar.gz -C /tmp && \
+    cd /tmp/cppcheck-${CPPCHECK_VERSION} && \
+    make install MATCHCOMPILER=yes FILESDIR=/usr/share/cppcheck HAVE_RULES=yes CXXFLAGS="-O2 -DNDEBUG -Wall -Wno-sign-compare -Wno-unused-function" && \
+    rm -rf /tmp/cppcheck
+RUN pip3 install pygments
+ENV CPPCHECK_HTML=/usr/bin/cppcheck-htmlreport
+
+#VERA ++
+RUN apt install -y vera++
+
+#Install RATS
+RUN apt install -y libexpat1-dev
+RUN git clone https://github.com/andrew-d/rough-auditing-tool-for-security.git /tmp/rats && cd /tmp/rats/ && ./configure && make install
+RUN rm -rf /tmp/rats
+
+# PVS Studio
+#ENV PVS_STUDIO_VERSION=7.19.61166.216
+#RUN apt-get install strace -y #Req. to trace compiler commands when using "pvs-studio trace"
+#RUN wget -q -O pvs-studio.tgz https://cdn.pvs-studio.com/pvs-studio-$PVS_STUDIO_VERSION-x86_64.tgz  \
+#   && tar -xf pvs-studio.tgz \
+#   && cd pvs-studio-$PVS_STUDIO_VERSION-x86_64 \
+#   && ./install.sh \
+#   && rm -rf pvs-studio.tgz \
+#   && rm -rf pvs-studio-$PVS_STUDIO_VERSION-x86_64\
+#   && pvs-studio --version
+ 
+#Add free license
+#RUN pvs-studio-analyzer credentials PVS-Studio Free FREE-FREE-FREE-FREE
+
+#---CodeChecker
+ENV CODECHECKER_VERSION 6.18.2
+
+#---LLVM is required by codechecker
+# Version info
+ENV LLVM_VERSION 12.0.1
+RUN wget -nv -O /tmp/clang+llvm.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-$LLVM_VERSION/clang+llvm-$LLVM_VERSION-x86_64-linux-gnu-ubuntu-16.04.tar.xz
+RUN tar -xf /tmp/clang+llvm.tar.xz -C /tmp/
+RUN rm -rf /tmp/clang+llvm.tar.xz
+#Note if llvm version is >=13.0.0 extraction folder is clang+llvm-${LLVM_VERSION}-x86_64-linux-gnu-ubuntu-16.04
+#     for version 12.0.1 it is clang+llvm-${LLVM_VERSION}-x86_64-linux-gnu-ubuntu-
+RUN mv /tmp/clang+llvm-${LLVM_VERSION}-x86_64-linux-gnu-ubuntu-/ /opt/clang-llvm
+RUN ln -s /opt/clang-llvm/bin/* /usr/bin
+
+#---Doxygen
+ENV DOXY_VER=1.9.4
+RUN wget -nv -O /tmp/doxy.tar.gz https://www.doxygen.nl/files/doxygen-${DOXY_VER}.linux.bin.tar.gz 
+RUN tar -xf /tmp/doxy.tar.gz -C /opt/
+RUN ln -s /opt/doxygen-$DOXY_VER/bin/doxygen /usr/bin/doxygen
+RUN apt install graphviz -y
+
+RUN apt install -y build-essential gcc-multilib npm -y
+RUN apt install -y python3-venv
+RUN apt install -y python3-dev
+RUN git clone -b "v${CODECHECKER_VERSION}" https://github.com/Ericsson/CodeChecker.git --depth 1 /opt/codechecker 
+WORKDIR "/opt/codechecker"
+SHELL ["/bin/bash", "-c"] 
+ENV CODECHECKER_ACTIVATE=/opt/codechecker/venv/bin/activate
+RUN make venv && source $CODECHECKER_ACTIVATE
+RUN make package
+RUN ln -s /opt/codechecker/build/CodeChecker/bin/CodeChecker /usr/bin/CodeChecker
+
+WORKDIR "/home"
+RUN rm -rf /tmp/*
