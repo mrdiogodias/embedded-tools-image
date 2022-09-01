@@ -2,7 +2,7 @@
 
 Adapted from [embedded-guidelines](https://git.fh-aachen.de/embedded-guidelines).
 
-This repository contains Dockerfiles that can build common CI/CD utilities for C/C++ projects. The utilities are divided in 3 categories:
+This repository contains Dockerfiles that can build common CI/CD utilities for C/C++ projects. The utilities are divided in 2 categories:
 
 - **Compilers**: Compilers, build systems and SDKs for MCUs.
     - [make](https://packages.debian.org/en/sid/make)
