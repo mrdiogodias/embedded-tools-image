@@ -34,7 +34,7 @@ Note: If no version is given for an utility/SW, it means the latest version is r
     <This repository >/
     ├───Common/                 - Common Docker files to build the images
     │   ├───Compilers.dock      - Dockerfile to install the embedded compilers
-    │   ├───Debug.dock          - Dockerfile to install the debuggers
+    │   ├───StaticAnalysis.dock - Dockerfile to install the static analysis tools
     ├───Embedded/               - Dockerfile to build the Embedded Image
     └───README.md               - this file    
 
